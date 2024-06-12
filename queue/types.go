@@ -18,7 +18,7 @@ type HandlerI interface {
 type Queue struct {
 	Name           string
 	QueueARN       string
-	MessageCount   *uint32
+	MessageCount   uint32
 	MessageTimeout uint32
 }
 

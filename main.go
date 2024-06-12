@@ -5,6 +5,7 @@ import (
 	"log"
 	"queue/awsx"
 	"queue/queue"
+	"strconv"
 
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
@@ -51,11 +52,10 @@ func (d *cli) renderBasicTable(table *widgets.Table, selected int) {
 	table.Rows = rows
 }
 
-func (d cli) renderInfo(queueInfo *queue.Queue) {
+func (d *cli) renderInfo(queueInfo *queue.Queue) {
 	p := widgets.NewParagraph()
 	p.Title = "Queue:" + queueInfo.Name
-	p.Text = "Messages:"
-
+	p.Text = "Messages:" + strconv.Itoa(int(queueInfo.MessageCount)) + " Timeout:" + strconv.Itoa(int(queueInfo.MessageTimeout))
 	p.SetRect(60, 0, screenWidth, 100)
 	ui.Render(p)
 }
@@ -72,7 +72,6 @@ func main() {
 
 	screenHeight, screenWidth = ui.TerminalDimensions()
 	selected := 0
-	moreInfo := false
 
 	basTable := widgets.NewTable()
 
@@ -86,6 +85,7 @@ func main() {
 		url:      urls,
 		page:     0,
 		pageSize: uint32(screenHeight - 2),
+		handler:  *handler,
 	}
 
 	d.renderBasicTable(basTable, selected)
@@ -101,12 +101,7 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			if moreInfo {
-				d.renderInfo(queue)
-				moreInfo = true
-			} else {
-				moreInfo = false
-			}
+			d.renderInfo(queue)
 
 		case "k":
 			if len(basTable.Rows) < 0 {

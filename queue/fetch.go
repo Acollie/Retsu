@@ -3,7 +3,8 @@ package queue
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"strings"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"strconv"
 )
 
 func (h *Handler) Scan(ctx context.Context) ([]string, error) {
@@ -16,7 +17,7 @@ func (h *Handler) Scan(ctx context.Context) ([]string, error) {
 		}
 		queuesOutput = append(queuesOutput, output)
 	}
-	urls, err := formatQueue(ctx, h.Client, queuesOutput)
+	urls, err := formatQueue(queuesOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -24,33 +25,32 @@ func (h *Handler) Scan(ctx context.Context) ([]string, error) {
 	return urls, err
 }
 
-func formatQueue(ctx context.Context, client *sqs.Client, queuesOutputs []*sqs.ListQueuesOutput) ([]string, error) {
-	var queues []string
-	for _, output := range queuesOutputs {
-		for _, url := range output.QueueUrls {
-			queues = append(queues, resolveNameFromUrl(url))
-		}
-
-	}
-	return queues, nil
-
-}
-
 func (h *Handler) GetQueue(ctx context.Context, queueURL string) (*Queue, error) {
 	resQueue, err := h.Client.GetQueueAttributes(ctx, &sqs.GetQueueAttributesInput{
 		QueueUrl: &queueURL,
+		AttributeNames: []types.QueueAttributeName{
+			types.QueueAttributeNameApproximateNumberOfMessages,
+			types.QueueAttributeNameVisibilityTimeout,
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	messageCount, err := strconv.ParseUint(resQueue.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessages)], 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	messageTimeout, err := strconv.ParseUint(resQueue.Attributes[string(types.QueueAttributeNameVisibilityTimeout)], 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Queue{
-		Name:     resolveNameFromUrl(queueURL),
-		QueueARN: resQueue.Attributes["QueueArn"],
+		Name:           resolveNameFromUrl(queueURL),
+		QueueARN:       resQueue.Attributes[string(types.QueueAttributeNameQueueArn)],
+		MessageTimeout: uint32(messageTimeout),
+		MessageCount:   uint32(messageCount),
 	}, nil
-
-}
-
-func resolveNameFromUrl(queueURL string) string {
-	split := strings.Split(queueURL, "/")
-	return split[len(split)-1]
 }
