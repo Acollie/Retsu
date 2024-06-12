@@ -16,10 +16,10 @@ type HandlerI interface {
 }
 
 type Queue struct {
-	name           string
-	queueARN       string
-	messageCount   *uint32
-	messageTimeout uint32
+	Name           string
+	QueueARN       string
+	MessageCount   *uint32
+	MessageTimeout uint32
 }
 
 type QueueI interface {
